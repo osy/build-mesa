@@ -8,6 +8,9 @@ set LLVM_VERSION=22.1.1
 set LLVM_SHA256=9c6f37f6f5f68d38f435d25f770fc48c62d92b2412205767a16dac2c942f0c95
 set LLVM_RELEASE=https://discourse.llvm.org/t/llvm-22-1-1-released/90150
 
+set GLSLANG_VERSION=16.2.0
+set GLSLANG_SHA256=01985335785c97906a91afe3cb5ee015997696181ec6c125bab5555602ba08e2
+
 >nul find "'%LLVM_VERSION%'" meson\meson.llvm.build || (
   echo llvm version in meson.llvm.build does not match expected %LLVM_VERSION% value^^!
   exit /b 1
@@ -54,7 +57,7 @@ if "%MESA_ARCH%" equ "x86" (
   set MESON_CROSS=%MESON_CROSS% -Dmin-windows-version=7
 )
 
-set PATH=%CD%\llvm-%MESA_ARCH%\bin;%CD%\winflexbison;%PATH%
+set PATH=%CD%\glslang-%GLSLANG_VERSION%-%MESA_ARCH%\bin;%CD%\llvm-%MESA_ARCH%\bin;%CD%\winflexbison;%PATH%
 
 rem *** check dependencies ***
 
@@ -117,6 +120,31 @@ if "!VS!" equ "" (
   echo ERROR: Visual Studio installation not found^^!
   exit /b 1
 )
+
+rem *** download & build glslang ***
+
+if exist "%CD%\glslang-%GLSLANG_VERSION%-%MESA_ARCH%\bin\glslangValidator.exe" (
+  goto :skip-llvm-build
+)
+
+call :get "https://github.com/KhronosGroup/glslang/archive/refs/tags/%GLSLANG_VERSION%.tar.gz" "glslang-%GLSLANG_VERSION%" "%GLSLANG_SHA256%" || exit /b 1
+
+pushd "glslang-%GLSLANG_VERSION%" && (
+  python.exe ".\update_glslang_sources.py"
+  popd
+)
+
+call "%VS%\Common7\Tools\VsDevCmd.bat" -arch=%TARGET_ARCH% -host_arch=%HOST_ARCH% -startdir=none -no_logo || exit /b 1
+cmake.exe ^
+  -G Ninja ^
+  -S glslang-%GLSLANG_VERSION% ^
+  -B glslang-%GLSLANG_VERSION%.build-%MESA_ARCH% ^
+  -D CMAKE_INSTALL_PREFIX="%CD%\glslang-%GLSLANG_VERSION%-%MESA_ARCH%" ^
+  -D CMAKE_BUILD_TYPE="Release" || exit /b 1
+
+ninja.exe -C glslang-%GLSLANG_VERSION%.build-%MESA_ARCH% install || exit /b 1
+
+:skip-glslang-build
 
 rem *** download & build llvm ***
 
