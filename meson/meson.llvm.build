@@ -92,6 +92,11 @@ foreach d : llvm_deps
   deps += cpp.find_library(d, dirs : llvm_lib_dir)
 endforeach
 
+ntdll_dep = cpp.find_library('ntdll', required: host_machine.system() == 'windows')
+if ntdll_dep.found()
+  deps += ntdll_dep
+endif
+
 dep_llvm = declare_dependency(
   include_directories : include_directories(llvm_folder + '/include'),
   dependencies : deps,
