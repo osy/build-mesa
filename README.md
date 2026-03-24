@@ -4,17 +4,6 @@ Automatic builds of [mesa][] OpenGL & Vulkan implementations for Windows (x86, x
 
 Builds are **static** linked to their dependencies, just place necessary dll file(s) next to your exe.
 
-# Download
-
-Binaries available as 7z archive in [latest release][] page. Following builds are provided:
-
-* [llvmpipe][] - software implementation of OpenGL using [LLVM][]
-* [d3d12][] - [Collabora & Microsoft][collabora-d3d12] implementation of OpenGL using D3D12
-* [zink][] - [Collabora][collabora-zink] implementation of OpenGL using Vulkan
-* [lavapipe][] - software implementation of Vulkan using [LLVM][]
-* dzn - Microsoft implementation of Vulkan using D3D12
-* [mft][] -  hardware accelerated video encoders for AVC, HEVC and AV1 using D3D12
-
 # Using OpenGL
 
 All OpenGL implementations (llvmpipe, d3d12, zink) come in two flavors:
@@ -49,14 +38,7 @@ offscreen context without dependency on any windowing system.
 
 # Using lavapipe/dzn for Vulkan
 
-To use Vulkan implementations, set [VK_DRIVER_FILES][] env variable to `dzn_icd.x86_64.json` or `lvp_icd.x86_64.json`
-
-# Using MFT video encoders
-
-To use MFT encoders use `regsvr32.exe` on binaries to register encoders globally in the system, then they will be
-available using regular MFT encoder enumeration. Alternatively use [DllGetClassObject][] export from dll files to
-create [IClassFactory][] object that provides [IClassFactory::CreateInstance][] method to create MFT encoder COM
-object explicitly. For CLSID guids for encoders see [this file][mft-guids].
+To use Vulkan implementations, set [VK_DRIVER_FILES][] env variable to `virtio_icd.*.json` or `lvp_icd.*.json`
 
 # Building locally
 
@@ -70,13 +52,13 @@ First make sure you have installed all necessary depenendencies:
 * [ninja.exe][] - will be automatically downloaded if missing
 * `tar.exe` and `curl.exe` - nowadays comes with [Windows 10/11][curl.exe]
 
-Then run `build.cmd` batch file when these tools are installed. It accepts optional argument specifying architecture:
+Then run `build.cmd path` batch file when these tools are installed. `path` should be the path to your Mesa source directory. It accepts optional argument specifying architecture:
 
-* `build.cmd x86` - for 32-bit Windows
-* `build.cmd x64` - for 64-bit Windows
-* `build.cmd arm64` - for Windows on ARM64, for example to use on Qualcomm Snapdragon X Elite devices
+* `build.cmd path x86` - for 32-bit Windows
+* `build.cmd path x64` - for 64-bit Windows
+* `build.cmd path arm64` - for Windows on ARM64, for example to use on Qualcomm Snapdragon X Elite devices
 
-Output files will be placed in `mesa-[name]-[arch]` folders.
+Output files will be placed in `mesa-install-[arch]` folder.
 
 [mesa]: https://www.mesa3d.org/
 [LLVM]: https://llvm.org/
@@ -86,7 +68,6 @@ Output files will be placed in `mesa-[name]-[arch]` folders.
 [zink]: https://docs.mesa3d.org/drivers/zink.html
 [collabora-d3d12]: https://www.collabora.com/news-and-blog/news-and-events/introducing-opencl-and-opengl-on-directx.html
 [collabora-zink]: https://www.collabora.com/news-and-blog/blog/2018/10/31/introducing-zink-opengl-implementation-vulkan/
-[latest release]: https://github.com/mmozeiko/build-mesa/releases/latest
 [WGL]: https://learn.microsoft.com/en-us/windows/win32/opengl/wgl-functions
 [EGL]: https://www.khronos.org/egl
 [GL]: https://www.khronos.org/opengl/
