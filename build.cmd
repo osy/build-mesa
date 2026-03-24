@@ -61,7 +61,7 @@ if "%MESA_ARCH%" equ "x86" (
   set MESON_CROSS=%MESON_CROSS% -Dmin-windows-version=7
 )
 
-set PATH=%CD%\glslang-%GLSLANG_VERSION%-%MESA_ARCH%\bin;%CD%\llvm-%MESA_ARCH%\bin;%CD%\winflexbison;%PATH%
+set PATH=%CD%\glslang-%GLSLANG_VERSION%.install\bin;%CD%\winflexbison;%PATH%
 
 rem *** check dependencies ***
 
@@ -138,6 +138,7 @@ pushd "glslang-%GLSLANG_VERSION%" && (
   popd
 )
 
+setlocal
 call "%VS%\Common7\Tools\VsDevCmd.bat" -arch=%HOST_ARCH% -host_arch=%HOST_ARCH% -startdir=none -no_logo || exit /b 1
 cmake.exe ^
   -G Ninja ^
@@ -147,13 +148,13 @@ cmake.exe ^
   -D CMAKE_BUILD_TYPE="Release" || exit /b 1
 
 ninja.exe -C glslang-%GLSLANG_VERSION%.build install || exit /b 1
+endlocal
 
 :skip-glslang-build
 
 rem *** download & build llvm ***
 
 if exist "llvm-%LLVM_VERSION%-%MESA_ARCH%\lib\LLVMSupport.lib" (
-  call "%VS%\Common7\Tools\VsDevCmd.bat" -arch=%TARGET_ARCH% -host_arch=%HOST_ARCH% -startdir=none -no_logo || exit /b 1
   goto :skip-llvm-build
 )
 
@@ -161,6 +162,7 @@ call :get "https://github.com/llvm/llvm-project/releases/download/llvmorg-%LLVM_
 
 if "%TARGET_ARCH%" neq "%HOST_ARCH%" (
 
+  setlocal
   call "%VS%\Common7\Tools\VsDevCmd.bat" -arch=%HOST_ARCH% -host_arch=%HOST_ARCH% -startdir=none -no_logo || exit /b 1
   cmake.exe ^
     -Wno-dev ^
@@ -203,12 +205,14 @@ if "%TARGET_ARCH%" neq "%HOST_ARCH%" (
   ninja.exe -C llvm-project-%LLVM_VERSION%.build-native llvm-tblgen || exit /b 1
   echo . > llvm-project-%LLVM_VERSION%.build-native\bin\llvm-nm.exe
   echo . > llvm-project-%LLVM_VERSION%.build-native\bin\llvm-readobj.exe
+  endlocal
 
   set LLVM_CMAKE_FLAGS=-D CMAKE_SYSTEM_NAME=Windows -D LLVM_NATIVE_TOOL_DIR="%CD%\llvm-project-%LLVM_VERSION%.build-native\bin"
 ) else (
   set LLVM_CMAKE_FLAGS=
 )
 
+setlocal
 call "%VS%\Common7\Tools\VsDevCmd.bat" -arch=%TARGET_ARCH% -host_arch=%HOST_ARCH% -startdir=none -no_logo || exit /b 1
 cmake.exe ^
   -Wno-dev ^
@@ -252,6 +256,7 @@ cmake.exe ^
   -D LLVM_ENABLE_IDE=OFF || exit /b 1
 ninja.exe -C llvm-project-%LLVM_VERSION%.build-%MESA_ARCH% llvm-headers llvm-libraries || exit /b 1
 ninja.exe -C llvm-project-%LLVM_VERSION%.build-%MESA_ARCH% install-llvm-headers install-llvm-libraries 1>nul || exit /b 1
+endlocal
 
 :skip-llvm-build
 
@@ -272,6 +277,7 @@ copy meson\meson.llvm.build mesa-src\subprojects\llvm\meson.build 1>nul || exit 
 rem *** build mesa ***
 
 rem rd /s /q mesa-build-%MESA_ARCH% 1>nul 2>nul
+setlocal
 call "%VS%\Common7\Tools\VsDevCmd.bat" -arch=%TARGET_ARCH% -host_arch=%HOST_ARCH% -startdir=none -no_logo || exit /b 1
 meson.exe setup ^
   mesa-build-%MESA_ARCH% ^
@@ -295,6 +301,7 @@ meson.exe setup ^
   -Dgallium-d3d10-dll-name=viogpu_d3d10 ^
   %MESON_CROSS% || exit /b 1
 ninja.exe -C mesa-build-%MESA_ARCH% install || exit /b 1
+endlocal
 
 rem *** done ***
 

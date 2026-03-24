@@ -55,7 +55,7 @@ jobs:
         id: glslang-cache
         uses: actions/cache@v4
         with:
-          path: glslang-${{ steps.llvm-version.outputs.GLSLANG_VERSION }}
+          path: glslang-${{ steps.llvm-version.outputs.GLSLANG_VERSION }}.install
           key: glslang-${{ steps.llvm-version.outputs.GLSLANG_VERSION }}
 
       - name: build
