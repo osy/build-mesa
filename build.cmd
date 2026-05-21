@@ -128,7 +128,7 @@ if "!VS!" equ "" (
 rem *** download & build glslang ***
 
 if exist "%CD%\glslang-%GLSLANG_VERSION%.install\bin\glslangValidator.exe" (
-  goto :skip-llvm-build
+  goto :skip-glslang-build
 )
 
 call :get "https://github.com/KhronosGroup/glslang/archive/refs/tags/%GLSLANG_VERSION%.tar.gz" "glslang-%GLSLANG_VERSION%" "%GLSLANG_SHA256%" || exit /b 1
