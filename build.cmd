@@ -301,6 +301,7 @@ meson.exe setup ^
   -Dgallium-d3d10-dll-name=viogpu_d3d10 ^
   -Dneptune=true ^
   -Dnpt_wine=false ^
+  -Dnpt_umd=both ^
   %MESON_CROSS% || exit /b 1
 ninja.exe -C mesa-build-%MESA_ARCH% install || exit /b 1
 endlocal
