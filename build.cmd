@@ -51,6 +51,14 @@ if "%MESA_ARCH%" equ "x86" (
   set TARGET_ARCH=arm64
   set LLVM_TARGETS_TO_BUILD=AArch64
   set TARGET_ARCH_NAME=aarch64
+) else if "%MESA_ARCH%" equ "arm64ec" (
+  rem arm64ec uses the arm64 MSVC toolchain with the /arm64EC switch (supplied
+  rem by the meson cross file and the CMake compiler flags).  It builds the same
+  rem components as arm64; the differences are the cross file, the /arm64EC LLVM
+  rem flag, the /MACHINE shim, and the arm64ec import libraries on LIB.
+  set TARGET_ARCH=arm64
+  set LLVM_TARGETS_TO_BUILD=AArch64
+  set TARGET_ARCH_NAME=aarch64
 ) else (
   echo Unknown "%MESA_ARCH%" build architecture^^!
   exit /b 1
@@ -61,7 +69,7 @@ if "%MESA_ARCH%" equ "x86" (
   set MESON_CROSS=%MESON_CROSS% -Dmin-windows-version=7
 )
 
-set PATH=%CD%\glslang-%GLSLANG_VERSION%.install\bin;%CD%\winflexbison;%PATH%
+set PATH=%CD%\glslang-%GLSLANG_VERSION%.install\bin;%CD%\winflexbison;%CD%\arm64ec-shim;%PATH%
 
 rem *** check dependencies ***
 
@@ -152,6 +160,24 @@ endlocal
 
 :skip-glslang-build
 
+rem *** build arm64ec /MACHINE shim ***
+
+rem Meson has no arm64ec machine and emits /MACHINE:ARM64 for the archiver and
+rem linker, which lib/link reject for /arm64EC objects.  Build the shims that
+rem rewrite /MACHINE:ARM64 -> /MACHINE:ARM64EC; the arm64ec cross file points
+rem ar/c_ld/cpp_ld at them (found via the arm64ec-shim dir on PATH).  Done
+rem before the llvm build so the whole arm64ec toolchain is ready up front.
+if "%MESA_ARCH%" neq "arm64ec" goto :skip-shim-build
+
+if not exist arm64ec-shim mkdir arm64ec-shim
+setlocal
+call "%VS%\Common7\Tools\VsDevCmd.bat" -arch=%HOST_ARCH% -host_arch=%HOST_ARCH% -startdir=none -no_logo || exit /b 1
+cl.exe /nologo /O2 /DSHIM_LIB  /Fe:arm64ec-shim\arm64ec-lib.exe  /Fo:arm64ec-shim\arm64ec-lib.obj  meson\arm64ec-machine-shim.c  || exit /b 1
+cl.exe /nologo /O2 /DSHIM_LINK /Fe:arm64ec-shim\arm64ec-link.exe /Fo:arm64ec-shim\arm64ec-link.obj meson\arm64ec-machine-shim.c || exit /b 1
+endlocal
+
+:skip-shim-build
+
 rem *** download & build llvm ***
 
 if exist "llvm-%LLVM_VERSION%-%MESA_ARCH%\lib\LLVMSupport.lib" (
@@ -214,6 +240,17 @@ if "%TARGET_ARCH%" neq "%HOST_ARCH%" (
 
 setlocal
 call "%VS%\Common7\Tools\VsDevCmd.bat" -arch=%TARGET_ARCH% -host_arch=%HOST_ARCH% -startdir=none -no_logo || exit /b 1
+rem arm64ec: build llvm with /arm64EC via CFLAGS/CXXFLAGS, per Microsoft's
+rem Ninja-generator guidance (learn.microsoft.com/windows/arm/arm64ec-build).
+rem CMake detects _M_ARM64EC from the flag and emits /machine:ARM64EC for
+rem lib/link itself, so no shim is needed here.  Also prepend the arm64ec import
+rem libraries (CMake's arm64ec ABI probe links a test exe).  Delayed expansion
+rem avoids the "(x86)" in WindowsSdkDir closing this parse context early.
+if "%MESA_ARCH%" equ "arm64ec" (
+  set CFLAGS=/arm64EC
+  set CXXFLAGS=/arm64EC
+  set LIB=!VCToolsInstallDir!lib\arm64ec;!WindowsSdkDir!Lib\!WindowsSDKVersion!um\arm64ec;!WindowsSdkDir!Lib\!WindowsSDKVersion!ucrt\arm64ec;!LIB!
+)
 cmake.exe ^
   -Wno-dev ^
   -G Ninja ^
@@ -279,6 +316,11 @@ rem *** build mesa ***
 rem rd /s /q mesa-build-%MESA_ARCH% 1>nul 2>nul
 setlocal
 call "%VS%\Common7\Tools\VsDevCmd.bat" -arch=%TARGET_ARCH% -host_arch=%HOST_ARCH% -startdir=none -no_logo || exit /b 1
+rem arm64ec: prepend the arm64ec import libraries so /arm64EC objects link.
+rem Delayed expansion avoids the "(x86)" in WindowsSdkDir closing this parse
+rem context early.  The /arm64EC compiler switch and /MACHINE shim come from the
+rem arm64ec cross file, so the meson invocation below is the same for every arch.
+if "%MESA_ARCH%" equ "arm64ec" set LIB=!VCToolsInstallDir!lib\arm64ec;!WindowsSdkDir!Lib\!WindowsSDKVersion!um\arm64ec;!WindowsSdkDir!Lib\!WindowsSDKVersion!ucrt\arm64ec;!LIB!
 meson.exe setup ^
   mesa-build-%MESA_ARCH% ^
   mesa-src ^
@@ -287,7 +329,6 @@ meson.exe setup ^
   -Dbuildtype=release ^
   -Db_ndebug=true ^
   -Db_vscrt=mt ^
-  -Dc_args="/experimental:c11atomics" ^
   -Dllvm=enabled ^
   -Dplatforms=windows ^
   -Dvideo-codecs= ^

@@ -2,6 +2,9 @@
 c = 'cl.exe'
 cpp = 'cl.exe'
 
+[built-in options]
+c_args = ['/experimental:c11atomics']
+
 [host_machine]
 system = 'windows'
 cpu_family = 'x86'

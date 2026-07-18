@@ -67,7 +67,15 @@ llvm_deps = ['LLVMAggressiveInstCombine',
              'LLVMVectorize']
 
 if host_machine.cpu_family() == 'aarch64'
-  llvm_arch = 'arm64'
+  # arm64 and arm64ec share the aarch64 cpu_family and the AArch64 LLVM backend,
+  # but link against different LLVM builds.  Detect arm64ec from the compiler
+  # (the /arm64EC switch defines _M_ARM64EC) so the arm64ec mesa build links the
+  # arm64ec LLVM (llvm-<ver>-arm64ec), not the native-arm64 one.
+  if cpp.get_define('_M_ARM64EC') != ''
+    llvm_arch = 'arm64ec'
+  else
+    llvm_arch = 'arm64'
+  endif
   llvm_deps += ['LLVMAArch64AsmParser',
                 'LLVMAArch64CodeGen',
                 'LLVMAArch64Desc',

@@ -1,0 +1,28 @@
+# ARM64EC cross file.
+#
+# ARM64EC is built with the arm64 MSVC toolchain plus the /arm64EC switch, so
+# the compiler is the same cl.exe as arm64.  Meson has no ARM64EC machine and
+# emits /MACHINE:ARM64 for the archiver/linker, which lib/link reject for
+# /arm64EC objects (LNK1392).  The ar/c_ld/cpp_ld shims (built by build.cmd into
+# arm64ec-shim\, which build.cmd puts on PATH) rewrite /MACHINE:ARM64 ->
+# /MACHINE:ARM64EC and forward to the real tool.  build.cmd also prepends the
+# arm64ec import libraries to LIB.
+[binaries]
+c = 'cl.exe'
+cpp = 'cl.exe'
+ar = 'arm64ec-lib.exe'
+c_ld = 'arm64ec-link.exe'
+cpp_ld = 'arm64ec-link.exe'
+
+[built-in options]
+c_args = ['/experimental:c11atomics', '/arm64EC']
+cpp_args = ['/arm64EC']
+
+[host_machine]
+system = 'windows'
+cpu_family = 'aarch64'
+cpu = 'aarch64'
+endian = 'little'
+
+[properties]
+skip_sanity_check = true
